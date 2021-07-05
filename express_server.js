@@ -1,3 +1,14 @@
+//Generate string of 6 random alphanumeric characters for "unique" shortURL
+function generateRandomString() {
+  const alphanumeric = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const length = 6;
+  let result = '';
+  for (let i = length; i > 0; i--) {
+    result += alphanumeric[Math.floor(Math.random() * alphanumeric.length)];
+  }
+  return result;
+}
+
 const express = require("express");
 const app = express();
 const PORT = 8080; // default port 8080
