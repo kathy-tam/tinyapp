@@ -1,5 +1,5 @@
 //Generate string of 6 random alphanumeric characters for "unique" shortURL
-function generateRandomString() {
+const generateRandomString = function() {
   const alphanumeric = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const length = 6;
   let result = '';
@@ -64,6 +64,11 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 app.get("/urls/:shortURL", (req, res) => {
   const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL] };
   res.render("urls_show", templateVars);
+});
+
+app.post("/urls/:shortURL/edit", (req, res) => {
+  urlDatabase[req.params.shortURL] = req.body.longURL;
+  res.redirect('/urls/');
 });
 
 app.listen(PORT, () => {
