@@ -66,15 +66,25 @@ app.get("/urls", (req, res) => {
 });
 
 app.get("/urls/new", (req, res) => {
-  const templateVars = { user: users[req.cookies["user_id"]] };
-  res.render("urls_new", templateVars);
+  console.log(req.cookies["user_id"])
+  if(req.cookies["user_id"]) {
+    const templateVars = { user: users[req.cookies["user_id"]] };
+    res.render("urls_new", templateVars);
+  } else {
+    res.redirect('/login');
+  }
 });
 
 app.post("/urls", (req, res) => {
-  // Store longURL-shortURL pair in database
-  const shortURL = generateRandomString();
-  urlDatabase[shortURL] = req.body.longURL;
-  res.redirect(`/urls/${shortURL}`);
+  if(req.cookies["user_id"]) {
+    // Store longURL-shortURL pair in database
+    const shortURL = generateRandomString();
+    urlDatabase[shortURL] = req.body.longURL;
+    res.redirect(`/urls/${shortURL}`);
+  } else {
+    res.statusCode = 403;
+    res.end("403 Forbidden");
+  }
 });
 
 app.get("/u/:shortURL", (req, res) => {
