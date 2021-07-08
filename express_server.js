@@ -10,19 +10,19 @@ const generateRandomString = function() {
   return result;
 }
 
-// Find user with specified email
-const findUser = function(email) {
-  for (let user in users) {
-    if (users[user].email === email) {
-      return users[user];
+// Get user with specified email
+const getUserByEmail = function(email, database) {
+  for (let user in database) {
+    if (database[user].email === email) {
+      return database[user];
     };
   }
   return null;
 }
 
 // Filter URL database for a user's URLs
-const urlsForUser = function(id) {
-  let urls = { ...urlDatabase };
+const urlsForUser = function(id, database) {
+  let urls = { ...database };
   for (let url in urls) {
     if (urls[url].userID !== id) {
       delete urls[url]
@@ -82,13 +82,13 @@ const users = {
 /* Route Handlers */
 
 // Authentication Middleware
-app.use('/', (req, res, next) => {
-  const whiteList = ['/', 'urls', '/login'];
-  if (req.session.user_id || whiteList.includes(req.path)) {
-    return next();
-  }
-  res.redirect('/');
-});
+// app.use('/', (req, res, next) => {
+//   const whiteList = ['/', 'urls', '/login'];
+//   if (req.session.user_id || whiteList.includes(req.path)) {
+//     return next();
+//   }
+//   res.redirect('/');
+// });
 
 app.get('/', (req, res) => {
   res.redirect('/urls/');
@@ -105,7 +105,7 @@ app.get('/', (req, res) => {
 app.get('/urls', (req, res) => {
   const templateVars = { user: users[req.session.user_id] };
   if (req.session.user_id) {
-    templateVars.urls = urlsForUser(req.session.user_id);
+    templateVars.urls = urlsForUser(req.session.user_id, urlDatabase);
     res.render("urls_index", templateVars);
   } else {
     templateVars.message = "Please login or register to use TinyApp.";
@@ -148,7 +148,7 @@ app.get("/u/:shortURL", (req, res) => {
 
 app.get("/urls/:shortURL", (req, res) => {
   const id = req.session.user_id;
-  if(id && urlsForUser(id)[req.params.shortURL]) {
+  if(id && urlsForUser(id, urlDatabase)[req.params.shortURL]) {
     const templateVars = { user: users[req.session.user_id], shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL };
     res.render("urls_show", templateVars);
   } else if (id && urlDatabase[req.params.shortURL]){
@@ -212,7 +212,7 @@ app.post('/register', (req, res) => {
     res.statusCode = 400;
     templateVars.message = "400 Bad Request. Please enter an email and/or password.";
     res.render('error', templateVars);
-  } else if (findUser(email)) {
+  } else if (getUserByEmail(email, users)) {
     // Send 400 error if email already registered
     res.statusCode = 400;
     templateVars.message = "400 Bad Request. Email already registered.";
@@ -238,7 +238,7 @@ app.get('/login', (req, res) => {
 
 app.post('/login', (req, res) => {
   const { email, password } = req.body;
-  user = findUser(email);
+  user = getUserByEmail(email, users);
   if (!user) {
     res.statusCode = 403;
     const templateVars = { user: null, message: "403 Forbidden. Please register first." };
