@@ -10,11 +10,11 @@ const generateRandomString = function() {
 }
 
 // Check if someone is already registered with the email
-const isRegistered = function(email) {
+const findUser = function(email) {
   for(let user in users) {
-    if(users[user].email === email) { return true };
+    if(users[user].email === email) { return user };
   }
-  return false;
+  return null;
 }
 
 const express = require("express");
@@ -48,9 +48,9 @@ const users = {
   }
 }
 
-// app.get("/", (req, res) => {
-//   res.send("Hello!");
-// });
+app.get("/", (req, res) => {
+  res.redirect('/urls/');
+});
 
 // app.get("/urls.json", (req, res) => {
 //   res.json(urlDatabase);
@@ -97,18 +97,6 @@ app.post("/urls/:shortURL/edit", (req, res) => {
   res.redirect('/urls/');
 });
 
-// Login route
-app.post("/login", (req, res) => {
-  res.cookie("username", req.body.username);
-  res.redirect('/urls/');
-});
-
-// Logout route
-app.post("/logout", (req, res) => {
-  res.clearCookie('username');
-  res.redirect('/urls/');
-});
-
 // Registration page
 app.get('/register', (req, res) => {
   const templateVars = { user: users[req.cookies["user_id"]] };
@@ -122,7 +110,7 @@ app.post('/register', (req, res) => {
     res.statusCode = 400;
     res.end("400 Bad Request");
     console.log("empty");
-  } else if (isRegistered(email)) {
+  } else if (findUser(email)) {
     // Send 400 error if email already registered
     res.statusCode = 400;
     console.log("already registered");
@@ -140,6 +128,24 @@ app.post('/register', (req, res) => {
 app.get('/login', (req, res) => {
   const templateVars = { user: users[req.cookies["user_id"]] };
   res.render('login.ejs', templateVars);
+});
+
+app.post('/login', (req, res) => {
+  const {email, password} = req.body;
+  const user = findUser(email);
+  if(!user || user.password !== password) {
+    res.statusCode = 403;
+    res.end("403 Forbidden");
+  } else {
+    res.cookie('user_id', user.id);
+  }
+  res.redirect('/urls/');
+});
+
+// Logout
+app.post("/logout", (req, res) => {
+  res.clearCookie('user_id');
+  res.redirect('/urls/');
 });
 
 app.listen(PORT, () => {
