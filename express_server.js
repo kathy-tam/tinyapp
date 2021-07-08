@@ -81,6 +81,15 @@ const users = {
 
 /* Route Handlers */
 
+// Authentication Middleware
+app.use('/', (req, res, next) => {
+  const whiteList = ['/', 'urls', '/login'];
+  if (req.session.user_id || whiteList.includes(req.path)) {
+    return next();
+  }
+  res.redirect('/');
+});
+
 app.get('/', (req, res) => {
   res.redirect('/urls/');
 });
