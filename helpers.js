@@ -18,7 +18,7 @@ const getUserByEmail = function(email, database) {
       return database[user];
     };
   }
-  return null;
+  return undefined;
 }
 
 // Filter URL database for a user's URLs
