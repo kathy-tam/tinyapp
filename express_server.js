@@ -94,8 +94,13 @@ app.post("/urls", (req, res) => {
 });
 
 app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL].longURL;
-  res.redirect(longURL);
+  try {
+    const longURL = urlDatabase[req.params.shortURL].longURL;
+    res.redirect(longURL);
+  } catch {
+    res.statusCode = 404;
+    res.end("404 Page not found");
+  }
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => {
