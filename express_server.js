@@ -39,6 +39,9 @@ const cookieParser = require('cookie-parser');
 const { response } = require("express");
 app.use(cookieParser())
 
+const bcrypt = require('bcrypt');
+
+
 const urlDatabase = {
   b6UTxQ: {
     longURL: "https://www.tsn.ca",
@@ -50,18 +53,7 @@ const urlDatabase = {
   }
 };
 
-const users = { 
-  "userRandomID": {
-    id: "userRandomID", 
-    email: "user@example.com", 
-    password: "purple-monkey-dinosaur"
-  },
- "aJ48lW": {
-    id: "aJ48lW", 
-    email: "user2@example.com", 
-    password: "dishwasher-funk"
-  }
-}
+const users = {};
 
 app.get("/", (req, res) => {
   res.redirect('/urls/');
@@ -192,8 +184,9 @@ app.post('/register', (req, res) => {
     templateVars.message = "400 Bad Request. Email already registered.";
     res.render('error', templateVars);
   } else {
+    const hashedPassword = bcrypt.hashSync(password, 10);
     const id = generateRandomString();
-    users[id] = { id, email, password };
+    users[id] = { id, email, hashedPassword };
     res.cookie('user_id', id);
     res.redirect('/urls');
   }
@@ -212,9 +205,13 @@ app.get('/login', (req, res) => {
 app.post('/login', (req, res) => {
   const {email, password} = req.body;
   user = findUser(email);
-  if(!user || user.password !== password) {
+  if(!user) {
     res.statusCode = 403;
-    const templateVars = { user: null, message: "403 Forbidden. Please register first or check your password." };
+    const templateVars = { user: null, message: "403 Forbidden. Please register first." };
+    res.render('error', templateVars);
+  } else if(!bcrypt.compareSync(password, user.hashedPassword)) {
+    res.statusCode = 403;
+    const templateVars = { user: null, message: "403 Forbidden. Invalid password." };
     res.render('error', templateVars);
   } else {
     res.cookie('user_id', user.id);
