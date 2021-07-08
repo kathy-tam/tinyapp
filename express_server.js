@@ -81,7 +81,7 @@ app.get("/urls", (req, res) => {
     templateVars.urls = urlsForUser(req.cookies["user_id"]);
     res.render("urls_index", templateVars);
   } else {
-    templateVars.message = "Please login or register to use TinyURL.";
+    templateVars.message = "Please login or register to use TinyApp.";
     res.render('error', templateVars)
   }
 });
@@ -125,13 +125,17 @@ app.get("/urls/:shortURL", (req, res) => {
   if(id && urlsForUser(id)[req.params.shortURL]) {
     const templateVars = { user: users[req.cookies["user_id"]], shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL };
     res.render("urls_show", templateVars);
-  } else if (id){
+  } else if (id && urlDatabase[req.params.shortURL]){
     res.statusCode = 403;
     const templateVars = { user: users[req.cookies["user_id"]], message: "403 Forbidden. Access to URL denied since you're not the URL creator."};
     res.render('error', templateVars);
-  } else {
+  } else if (urlDatabase[req.params.shortURL]) {
     res.statusCode = 403;
     const templateVars = { user: users[req.cookies["user_id"]], message: "403 Forbidden. Please login and try again."};
+    res.render('error', templateVars);
+  } else {
+    res.statusCode = 404;
+    const templateVars = { user: null, message: "404 Page Not Found. This shortURL doesn't exist."};
     res.render('error', templateVars);
   }
 });
