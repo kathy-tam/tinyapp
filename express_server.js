@@ -9,10 +9,10 @@ const generateRandomString = function() {
   return result;
 }
 
-// Check if someone is already registered with the email
+// Find user with specified email
 const findUser = function(email) {
   for(let user in users) {
-    if(users[user].email === email) { return user };
+    if(users[user].email === email) { return users[user] };
   }
   return null;
 }
@@ -119,7 +119,6 @@ app.post('/register', (req, res) => {
     const id = generateRandomString();
     users[id] = { id, email, password };
     res.cookie('user_id', id);
-    console.log(Object.keys(users));
     res.redirect('/urls');
   }
 });
@@ -132,7 +131,7 @@ app.get('/login', (req, res) => {
 
 app.post('/login', (req, res) => {
   const {email, password} = req.body;
-  const user = findUser(email);
+  user = findUser(email);
   if(!user || user.password !== password) {
     res.statusCode = 403;
     res.end("403 Forbidden");
