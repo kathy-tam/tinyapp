@@ -120,11 +120,6 @@ app.get("/u/:shortURL", (req, res) => {
   }
 });
 
-app.post("/urls/:shortURL/delete", (req, res) => {
-  delete urlDatabase[req.params.shortURL];
-  res.redirect('/urls/');
-});
-
 app.get("/urls/:shortURL", (req, res) => {
   const id = req.cookies["user_id"];
   if(id && urlsForUser(id)[req.params.shortURL]) {
@@ -141,9 +136,32 @@ app.get("/urls/:shortURL", (req, res) => {
   }
 });
 
+// Delete URL
+app.post("/urls/:shortURL/delete", (req, res) => {
+  const id = req.cookies["user_id"];
+  const shortURL = req.params.shortURL;
+  if (id && urlDatabase[shortURL].userID === id){
+    delete urlDatabase[req.params.shortURL];
+    res.redirect('/urls/');
+  } else {
+    res.statusCode = 403;
+    const templateVars = { user: users[req.cookies["user_id"]], message: "403 Forbidden. Please login and try again."};
+    res.render('error', templateVars);
+  }
+});
+
+// Edit URL
 app.post("/urls/:shortURL/edit", (req, res) => {
-  urlDatabase[req.params.shortURL].longURL = req.body.longURL;
-  res.redirect('/urls/');
+  const id = req.cookies["user_id"];
+  const shortURL = req.params.shortURL;
+  if (id && urlDatabase[shortURL].userID === id){
+    urlDatabase[req.params.shortURL].longURL = req.body.longURL;
+    res.redirect('/urls/');
+  } else {
+    res.statusCode = 403;
+    const templateVars = { user: users[req.cookies["user_id"]], message: "403 Forbidden. Please login and try again."};
+    res.render('error', templateVars);
+  }
 });
 
 // Registration page
