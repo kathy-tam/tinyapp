@@ -1,4 +1,4 @@
-//Generate string of 6 random alphanumeric characters for "unique" shortURL
+// Generate string of 6 random alphanumeric characters for "unique" shortURL
 const generateRandomString = function() {
   const alphanumeric = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const length = 6;
@@ -15,6 +15,15 @@ const findUser = function(email) {
     if(users[user].email === email) { return users[user] };
   }
   return null;
+}
+
+// Filter URL database for a user's URLs
+const urlsForUser = function(id) {
+  let urls = [];
+  for(let url in urlDatabase) {
+    if(urlDatabase[url].userID === id) { urls.push(url) };
+  }
+  return urls;
 }
 
 const express = require("express");
@@ -68,7 +77,12 @@ app.get("/", (req, res) => {
 
 app.get("/urls", (req, res) => {
   const templateVars = { user: users[req.cookies["user_id"]], urls: urlDatabase };
-  res.render("urls_index", templateVars);
+  if(req.cookies['user_id']) {
+    res.render("urls_index", templateVars);
+  } else {
+    templateVars.message = "Please login or register to use TinyURL.";
+    res.render('error', templateVars)
+  }
 });
 
 app.get("/urls/new", (req, res) => {
@@ -89,7 +103,8 @@ app.post("/urls", (req, res) => {
     res.redirect(`/urls/${shortURL}`);
   } else {
     res.statusCode = 403;
-    res.end("403 Forbidden");
+    const templateVars = { message: "403 Forbidden. Please login or register." };
+    res.render('error', templateVars);
   }
 });
 
@@ -99,7 +114,8 @@ app.get("/u/:shortURL", (req, res) => {
     res.redirect(longURL);
   } catch {
     res.statusCode = 404;
-    res.end("404 Page not found");
+    const templateVars = { message: "404 Page Not Found. Please check the shortURL and try again."};
+    res.render('error', templateVars);
   }
 });
 
@@ -131,15 +147,16 @@ app.get('/register', (req, res) => {
 app.post('/register', (req, res) => {
   const {email, password} = req.body;
   // Send 400 error if no email or password provided
+  const templateVars = { user: undefined};
   if(email === "" || password === "") {
     res.statusCode = 400;
-    res.end("400 Bad Request");
-    console.log("empty");
+    templateVars.message = "400 Bad Request. Please enter an email and/or password.";
+    res.render('error', templateVars);
   } else if (findUser(email)) {
     // Send 400 error if email already registered
     res.statusCode = 400;
-    console.log("already registered");
-    res.end("400 Bad Request");
+    templateVars.message = "400 Bad Request. Email already registered.";
+    res.render('error', templateVars);
   } else {
     const id = generateRandomString();
     users[id] = { id, email, password };
@@ -163,11 +180,12 @@ app.post('/login', (req, res) => {
   user = findUser(email);
   if(!user || user.password !== password) {
     res.statusCode = 403;
-    res.end("403 Forbidden");
+    const templateVars = { user: null, message: "403 Forbidden. Please register first or check your password." };
+    res.render('error', templateVars);
   } else {
     res.cookie('user_id', user.id);
+    res.redirect('/urls/');
   }
-  res.redirect('/urls/');
 });
 
 // Logout
