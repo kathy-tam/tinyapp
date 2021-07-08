@@ -99,8 +99,12 @@ app.post("/urls/:shortURL/edit", (req, res) => {
 
 // Registration page
 app.get('/register', (req, res) => {
-  const templateVars = { user: users[req.cookies["user_id"]] };
-  res.render('registration.ejs', templateVars);
+  if(req.cookies["user_id"]) {
+    res.redirect('/urls');
+  } else {
+    const templateVars = { user: users[req.cookies["user_id"]] };
+    res.render('registration.ejs', templateVars);
+  }
 });
 
 app.post('/register', (req, res) => {
@@ -125,8 +129,12 @@ app.post('/register', (req, res) => {
 
 // Login page
 app.get('/login', (req, res) => {
-  const templateVars = { user: users[req.cookies["user_id"]] };
-  res.render('login.ejs', templateVars);
+  if(req.cookies["user_id"]) {
+    res.redirect('/urls');
+  } else {
+    const templateVars = { user: users[req.cookies["user_id"]] };
+    res.render('login.ejs', templateVars);
+  }
 });
 
 app.post('/login', (req, res) => {
