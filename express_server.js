@@ -9,6 +9,14 @@ const generateRandomString = function() {
   return result;
 }
 
+// Check if someone is already registered with the email
+const isRegistered = function(email) {
+  for(let user in users) {
+    if(users[user].email === email) { return true };
+  }
+  return false;
+}
+
 const express = require("express");
 const app = express();
 const PORT = 8080; // default port 8080
@@ -19,6 +27,7 @@ const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
 
 const cookieParser = require('cookie-parser');
+const { response } = require("express");
 app.use(cookieParser())
 
 const urlDatabase = {
@@ -108,11 +117,24 @@ app.get('/register', (req, res) => {
 
 app.post('/register', (req, res) => {
   const {email, password} = req.body;
-  const id = generateRandomString();
-  users[id] = { id, email, password };
-  res.cookie('user_id', id);
-  res.redirect('/urls');
-})
+  // Send 400 error if no email or password provided
+  if(email === "" || password === "") {
+    res.statusCode = 400;
+    res.end("400 Bad Request");
+    console.log("empty");
+  } else if (isRegistered(email)) {
+    // Send 400 error if email already registered
+    res.statusCode = 400;
+    console.log("already registered");
+    res.end("400 Bad Request");
+  } else {
+    const id = generateRandomString();
+    users[id] = { id, email, password };
+    res.cookie('user_id', id);
+    console.log(Object.keys(users));
+    res.redirect('/urls');
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
