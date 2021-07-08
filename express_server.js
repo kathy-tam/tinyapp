@@ -19,9 +19,9 @@ const findUser = function(email) {
 
 // Filter URL database for a user's URLs
 const urlsForUser = function(id) {
-  let urls = [];
-  for(let url in urlDatabase) {
-    if(urlDatabase[url].userID === id) { urls.push(url) };
+  let urls = { ...urlDatabase };
+  for(let url in urls) {
+    if(urls[url].userID !== id) { delete urls[url] };
   }
   return urls;
 }
@@ -76,8 +76,9 @@ app.get("/", (req, res) => {
 // });
 
 app.get("/urls", (req, res) => {
-  const templateVars = { user: users[req.cookies["user_id"]], urls: urlDatabase };
+  const templateVars = { user: users[req.cookies["user_id"]] };
   if(req.cookies['user_id']) {
+    templateVars.urls = urlsForUser(req.cookies["user_id"]);
     res.render("urls_index", templateVars);
   } else {
     templateVars.message = "Please login or register to use TinyURL.";
@@ -99,7 +100,7 @@ app.post("/urls", (req, res) => {
   if(req.cookies["user_id"]) {
     // Store longURL-shortURL pair in database
     const shortURL = generateRandomString();
-    urlDatabase[shortURL] = { longURL: req.body.longURL, userID: shortURL};
+    urlDatabase[shortURL] = { longURL: req.body.longURL, userID: req.cookies["user_id"] };
     res.redirect(`/urls/${shortURL}`);
   } else {
     res.statusCode = 403;
@@ -125,8 +126,19 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 });
 
 app.get("/urls/:shortURL", (req, res) => {
-  const templateVars = { user: users[req.cookies["user_id"]], shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL };
-  res.render("urls_show", templateVars);
+  const id = req.cookies["user_id"];
+  if(id && urlsForUser(id)[req.params.shortURL]) {
+    const templateVars = { user: users[req.cookies["user_id"]], shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL };
+    res.render("urls_show", templateVars);
+  } else if (id){
+    res.statusCode = 403;
+    const templateVars = { user: users[req.cookies["user_id"]], message: "403 Forbidden. Access to URL denied since you're not the URL creator."};
+    res.render('error', templateVars);
+  } else {
+    res.statusCode = 403;
+    const templateVars = { user: users[req.cookies["user_id"]], message: "403 Forbidden. Please login and try again."};
+    res.render('error', templateVars);
+  }
 });
 
 app.post("/urls/:shortURL/edit", (req, res) => {
