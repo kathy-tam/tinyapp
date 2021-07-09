@@ -13,19 +13,18 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(cookieSession({
   name: 'session',
-  // keys = [],
-  secret: 'encryptdemcookiesnomnom'
+  keys: ['encryptdemcookiesnomnom']
 }));
 // Authentication Middleware
 // app.use('/', (req, res, next) => {
 //   const whiteList = ['/', 'urls', '/login'];
-//   if (req.session.user_id || whiteList.includes(req.path)) {
+//   if (req.session.userID || whiteList.includes(req.path)) {
 //     return next();
 //   }
 //   res.redirect('/');
 // });
 
-/* Replaced with cookie-session middleware 
+/* Replaced with cookie-session middleware
 const cookieParser = require('cookie-parser');
 app.use(cookieParser())
 */
@@ -35,7 +34,7 @@ const urlDatabase = {
   b6UTxQ: {
     longURL: "https://www.tsn.ca",
     userID: "aJ48lW"
-  }, 
+  },
   i3BoGr: {
     longURL: "https://www.google.ca",
     userID: "aJ48lW"
@@ -43,16 +42,17 @@ const urlDatabase = {
 };
 
 const userDatabase = {
- "aJ48lW": {
-    id: "aJ48lW", 
-    email: "user2@example.com", 
+  "aJ48lW": {
+    id: "aJ48lW",
+    email: "user2@example.com",
     password: bcrypt.hashSync("dishwasher-funk", 10)
   }
 };
 
 /* Route Handlers */
+// In each handler, check if user is logged in or not (authentication)
 app.get('/', (req, res) => {
-  if (req.session.user_id) {
+  if (req.session.userID) {
     res.redirect('/urls/');
   } else {
     res.redirect('/login');
@@ -60,19 +60,19 @@ app.get('/', (req, res) => {
 });
 
 app.get('/urls', (req, res) => {
-  const templateVars = { user: userDatabase[req.session.user_id] };
-  if (req.session.user_id) {
-    templateVars.urls = urlsForUser(req.session.user_id, urlDatabase);
+  const templateVars = { user: userDatabase[req.session.userID] };
+  if (req.session.userID) {
+    templateVars.urls = urlsForUser(req.session.userID, urlDatabase);
     res.render("urls_index", templateVars);
   } else {
     templateVars.message = "Please login or register to use TinyApp.";
-    res.render('error', templateVars)
+    res.render('error', templateVars);
   }
 });
 
 app.get("/urls/new", (req, res) => {
-  if (req.session.user_id) {
-    const templateVars = { user: userDatabase[req.session.user_id] };
+  if (req.session.userID) {
+    const templateVars = { user: userDatabase[req.session.userID] };
     res.render("urls_new", templateVars);
   } else {
     res.redirect('/login');
@@ -80,10 +80,10 @@ app.get("/urls/new", (req, res) => {
 });
 
 app.post("/urls", (req, res) => {
-  if (req.session.user_id) {
+  if (req.session.userID) {
     // Store longURL-shortURL pair in database
     const shortURL = generateRandomString();
-    urlDatabase[shortURL] = { longURL: req.body.longURL, userID: req.session.user_id };
+    urlDatabase[shortURL] = { longURL: req.body.longURL, userID: req.session.userID };
     res.redirect(`/urls/${shortURL}`);
   } else {
     res.statusCode = 403;
@@ -96,7 +96,7 @@ app.get("/u/:shortURL", (req, res) => {
   try {
     const longURL = urlDatabase[req.params.shortURL].longURL;
     res.redirect(longURL);
-  } catch {
+  } catch (err) {
     res.statusCode = 404;
     const templateVars = { message: "404 Page Not Found. Please check the shortURL and try again."};
     res.render('error', templateVars);
@@ -104,18 +104,22 @@ app.get("/u/:shortURL", (req, res) => {
 });
 
 app.get("/urls/:shortURL", (req, res) => {
-  const id = req.session.user_id;
-  if(id && urlsForUser(id, urlDatabase)[req.params.shortURL]) {
-    const templateVars = { user: userDatabase[req.session.user_id], shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL };
+  const id = req.session.userID;
+  // if logged in and the creator
+  if (id && urlsForUser(id, urlDatabase)[req.params.shortURL]) {
+    const templateVars = { user: userDatabase[req.session.userID], shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL };
     res.render("urls_show", templateVars);
-  } else if (id && urlDatabase[req.params.shortURL]){
+  // logged in and not the creator
+  } else if (id && urlDatabase[req.params.shortURL]) {
     res.statusCode = 403;
-    const templateVars = { user: userDatabase[req.session.user_id], message: "403 Forbidden. Access to URL denied since you're not the URL creator."};
+    const templateVars = { user: userDatabase[req.session.userID], message: "403 Forbidden. Access to URL denied since you're not the URL creator."};
     res.render('error', templateVars);
+  // not logged in
   } else if (urlDatabase[req.params.shortURL]) {
     res.statusCode = 403;
-    const templateVars = { user: userDatabase[req.session.user_id], message: "403 Forbidden. Please login and try again."};
+    const templateVars = { user: userDatabase[req.session.userID], message: "403 Forbidden. Please login and try again."};
     res.render('error', templateVars);
+  //shortURL doesn't exist
   } else {
     res.statusCode = 404;
     const templateVars = { user: null, message: "404 Page Not Found. This shortURL doesn't exist."};
@@ -125,87 +129,91 @@ app.get("/urls/:shortURL", (req, res) => {
 
 // Delete URL
 app.post("/urls/:shortURL/delete", (req, res) => {
-  const id = req.session.user_id;
+  const id = req.session.userID;
   const shortURL = req.params.shortURL;
-  if (id && urlDatabase[shortURL].userID === id){
-    delete urlDatabase[req.params.shortURL];
+  if (id && urlDatabase[shortURL].userID === id) {
+    delete urlDatabase[shortURL];
     res.redirect('/urls/');
   } else {
     res.statusCode = 403;
-    const templateVars = { user: userDatabase[req.session.user_id], message: "403 Forbidden. Please login and try again."};
+    const templateVars = { user: userDatabase[id], message: "403 Forbidden. Please login and try again."};
     res.render('error', templateVars);
   }
 });
 
 // Edit URL
 app.post("/urls/:shortURL/edit", (req, res) => {
-  const id = req.session.user_id;
+  const id = req.session.userID;
   const shortURL = req.params.shortURL;
-  if (id && urlDatabase[shortURL].userID === id){
-    urlDatabase[req.params.shortURL].longURL = req.body.longURL;
+  if (id && urlDatabase[shortURL].userID === id) {
+    urlDatabase[shortURL].longURL = req.body.longURL;
     res.redirect('/urls/');
   } else {
     res.statusCode = 403;
-    const templateVars = { user: userDatabase[req.session.user_id], message: "403 Forbidden. Please login and try again."};
+    const templateVars = { user: userDatabase[id], message: "403 Forbidden. Please login and try again."};
     res.render('error', templateVars);
   }
 });
 
 // Registration
 app.get('/register', (req, res) => {
-  if(req.session.user_id) {
+  if (req.session.userID) {
     res.redirect('/urls');
   } else {
-    const templateVars = { user: userDatabase[req.session.user_id] };
+    const templateVars = { user: userDatabase[req.session.userID] };
     res.render('registration.ejs', templateVars);
   }
 });
 
 app.post('/register', (req, res) => {
   const {email, password} = req.body;
-  // Send 400 error if no email or password provided
   const templateVars = { user: undefined};
-  if(email === "" || password === "") {
+  // Send 400 error if no email or password provided
+  if (email === "" || password === "") {
     res.statusCode = 400;
     templateVars.message = "400 Bad Request. Please enter an email and/or password.";
     res.render('error', templateVars);
+  // Send 400 error if email already registered
   } else if (getUserByEmail(email, userDatabase)) {
-    // Send 400 error if email already registered
     res.statusCode = 400;
     templateVars.message = "400 Bad Request. Email already registered.";
     res.render('error', templateVars);
+  // Otherwise, hash password and generate random ID to create new account. Create a cookie for the session
   } else {
     const hashedPassword = bcrypt.hashSync(password, 10);
     const id = generateRandomString();
     userDatabase[id] = { id, email, hashedPassword };
-    req.session.user_id = id;
+    req.session.userID = id;
     res.redirect('/urls');
   }
 });
 
 // Login
 app.get('/login', (req, res) => {
-  if(req.session.user_id) {
+  if (req.session.userID) {
     res.redirect('/urls');
   } else {
-    const templateVars = { user: userDatabase[req.session.user_id] };
+    const templateVars = { user: userDatabase[req.session.userID] };
     res.render('login.ejs', templateVars);
   }
 });
 
 app.post('/login', (req, res) => {
   const { email, password } = req.body;
-  user = getUserByEmail(email, userDatabase);
+  const user = getUserByEmail(email, userDatabase);
+  // User doesn't exist
   if (!user) {
     res.statusCode = 403;
     const templateVars = { user: null, message: "403 Forbidden. Please register first." };
     res.render('error', templateVars);
+  // Password doesn't match
   } else if (!bcrypt.compareSync(password, user.hashedPassword)) {
     res.statusCode = 403;
     const templateVars = { user: null, message: "403 Forbidden. Invalid password." };
     res.render('error', templateVars);
+  // Authenticated login. Create a cookie for the session
   } else {
-    req.session.user_id = user.id;
+    req.session.userID = user.id;
     res.redirect('/urls/');
   }
 });
@@ -213,7 +221,7 @@ app.post('/login', (req, res) => {
 // Logout
 // Clear cookies and redirect
 app.post("/logout", (req, res) => {
-  // delete req.session.user_id;
+  // delete req.session.userID;
   req.session = null;
   res.redirect('/urls/');
 });
