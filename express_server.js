@@ -15,19 +15,6 @@ app.use(cookieSession({
   name: 'session',
   keys: ['encryptdemcookiesnomnom']
 }));
-// Authentication Middleware
-// app.use('/', (req, res, next) => {
-//   const whiteList = ['/', 'urls', '/login'];
-//   if (req.session.userID || whiteList.includes(req.path)) {
-//     return next();
-//   }
-//   res.redirect('/');
-// });
-
-/* Replaced with cookie-session middleware
-const cookieParser = require('cookie-parser');
-app.use(cookieParser())
-*/
 
 /* Database Objects */
 const urlDatabase = {
@@ -51,6 +38,8 @@ const userDatabase = {
 
 /* Route Handlers */
 // In each handler, check if user is logged in or not (authentication)
+
+// Table of user's created URLs
 app.get('/', (req, res) => {
   if (req.session.userID) {
     res.redirect('/urls/');
@@ -70,18 +59,9 @@ app.get('/urls', (req, res) => {
   }
 });
 
-app.get("/urls/new", (req, res) => {
-  if (req.session.userID) {
-    const templateVars = { user: userDatabase[req.session.userID] };
-    res.render("urls_new", templateVars);
-  } else {
-    res.redirect('/login');
-  }
-});
-
 app.post("/urls", (req, res) => {
   if (req.session.userID) {
-    // Store longURL-shortURL pair in database
+    // Generate shortURL and store the associated longURL and userID in the database
     const shortURL = generateRandomString();
     urlDatabase[shortURL] = { longURL: req.body.longURL, userID: req.session.userID };
     res.redirect(`/urls/${shortURL}`);
@@ -92,6 +72,17 @@ app.post("/urls", (req, res) => {
   }
 });
 
+// Page to create a new shortURL
+app.get("/urls/new", (req, res) => {
+  if (req.session.userID) {
+    const templateVars = { user: userDatabase[req.session.userID] };
+    res.render("urls_new", templateVars);
+  } else {
+    res.redirect('/login');
+  }
+});
+
+// Any user can click on shortURL and get redirected to the longURL
 app.get("/u/:shortURL", (req, res) => {
   try {
     const longURL = urlDatabase[req.params.shortURL].longURL;
@@ -103,23 +94,24 @@ app.get("/u/:shortURL", (req, res) => {
   }
 });
 
+// Page to display the generated shortURL and edit box
 app.get("/urls/:shortURL", (req, res) => {
   const id = req.session.userID;
-  // if logged in and the creator
+  // Logged in and the URL creator
   if (id && urlsForUser(id, urlDatabase)[req.params.shortURL]) {
     const templateVars = { user: userDatabase[req.session.userID], shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL };
     res.render("urls_show", templateVars);
-  // logged in and not the creator
+  // Logged in and not the creator
   } else if (id && urlDatabase[req.params.shortURL]) {
     res.statusCode = 403;
     const templateVars = { user: userDatabase[req.session.userID], message: "403 Forbidden. Access to URL denied since you're not the URL creator."};
     res.render('error', templateVars);
-  // not logged in
+  // Not logged in
   } else if (urlDatabase[req.params.shortURL]) {
     res.statusCode = 403;
     const templateVars = { user: userDatabase[req.session.userID], message: "403 Forbidden. Please login and try again."};
     res.render('error', templateVars);
-  //shortURL doesn't exist
+  // ShortURL doesn't exist
   } else {
     res.statusCode = 404;
     const templateVars = { user: null, message: "404 Page Not Found. This shortURL doesn't exist."};
@@ -131,6 +123,7 @@ app.get("/urls/:shortURL", (req, res) => {
 app.post("/urls/:shortURL/delete", (req, res) => {
   const id = req.session.userID;
   const shortURL = req.params.shortURL;
+  // Logged in and the URL creator
   if (id && urlDatabase[shortURL].userID === id) {
     delete urlDatabase[shortURL];
     res.redirect('/urls/');
@@ -145,6 +138,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 app.post("/urls/:shortURL/edit", (req, res) => {
   const id = req.session.userID;
   const shortURL = req.params.shortURL;
+  // Logged in and the URL creator
   if (id && urlDatabase[shortURL].userID === id) {
     urlDatabase[shortURL].longURL = req.body.longURL;
     res.redirect('/urls/');
@@ -166,8 +160,8 @@ app.get('/register', (req, res) => {
 });
 
 app.post('/register', (req, res) => {
-  const {email, password} = req.body;
-  const templateVars = { user: undefined};
+  const { email, password } = req.body;
+  const templateVars = { user: undefined };
   // Send 400 error if no email or password provided
   if (email === "" || password === "") {
     res.statusCode = 400;
@@ -221,7 +215,6 @@ app.post('/login', (req, res) => {
 // Logout
 // Clear cookies and redirect
 app.post("/logout", (req, res) => {
-  // delete req.session.userID;
   req.session = null;
   res.redirect('/urls/');
 });
